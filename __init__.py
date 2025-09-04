@@ -1,1 +1,1 @@
-touch insta_parser_bot/__init__.py
+from . import db, requests
