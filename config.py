@@ -1,0 +1,4 @@
+INST_LOGIN = ''
+INST_PASS = ''
+TOKEN = ''
+ADMIN_ID = '139740084'
