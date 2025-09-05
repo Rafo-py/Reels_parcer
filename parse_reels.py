@@ -5,10 +5,11 @@ def fetch_top_reels_public(
     username: str,
     limit: int = 5,
     min_ratio: float = 0.0
-) -> Tuple[int, List[Tuple[str, int, float]], str]:
+) -> Tuple[int, List[Tuple[str, int, float]], bool]:
     """
-    Возвращает (followers, reels, status), где reels = [(reel_url, views, ratio)]
-    status = 'public' или 'private'
+    Возвращает (followers, reels, is_private)
+    reels — список кортежей: (reel_url, views, virality_ratio)
+    is_private — True если аккаунт закрыт
     """
     L = instaloader.Instaloader(
         download_pictures=False,
@@ -20,10 +21,9 @@ def fetch_top_reels_public(
     try:
         profile = instaloader.Profile.from_username(L.context, username)
     except instaloader.exceptions.ProfileNotExistsException:
-        return 0, [], "not_found"
-
-    if profile.is_private:
-        return profile.followers or 0, [], "private"
+        return 0, [], False  # аккаунт не найден
+    except instaloader.exceptions.PrivateProfileNotFollowedException:
+        return 0, [], True  # закрытый аккаунт
 
     followers = profile.followers or 0
     results: List[Tuple[str, int, float]] = []
@@ -41,4 +41,4 @@ def fetch_top_reels_public(
             break
 
     results.sort(key=lambda x: x[2], reverse=True)
-    return followers, results[:limit], "public"
+    return followers, results[:limit], profile.is_private
