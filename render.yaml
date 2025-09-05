@@ -4,18 +4,18 @@ services:
     env: python
     plan: free
     buildCommand: |
-      # Устанавливаем Rust в домашнюю директорию
+      # Настраиваем Rust в домашней директории
       export CARGO_HOME=$HOME/.cargo
       export RUSTUP_HOME=$HOME/.rustup
       export PATH=$CARGO_HOME/bin:$PATH
 
-      # Скачиваем и ставим rustup
+      # Устанавливаем Rust через rustup
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       source $HOME/.cargo/env
 
       # Обновляем pip и инструменты сборки
       pip install --upgrade pip setuptools wheel
 
-      # Ставим зависимости из requirements.txt
+      # Ставим зависимости Python
       pip install -r requirements.txt
     startCommand: python bot.py
