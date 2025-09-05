@@ -4,8 +4,13 @@ from aiogram.types import Update
 
 async def handle_webhook(request):
     data = await request.json()
-    update = Update(**data)  # конвертируем dict в Update
-    await request.app["dp"].feed_update(update)  # передаем в Dispatcher
+    update = Update(**data)
+    dp = request.app["dp"]
+    bot = request.app["bot"]
+
+    # Правильный вызов feed_update в aiogram 3.x
+    await dp.feed_update(bot=bot, update=update)
+
     return web.Response(text="OK")
 
 async def start_web_server(bot, dp):
