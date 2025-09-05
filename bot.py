@@ -12,6 +12,19 @@ from handlers import (
 
 )
 
+import config
+from Server import start_web_server   # импортируем функцию из server.py
+
+bot = Bot(token=config.TOKEN)
+dp = Dispatcher()
+
+async def main():
+    # Запускаем web-сервер для Render
+    asyncio.create_task(start_web_server())
+
+    # Запускаем бота
+    await dp.start_polling(bot)
+    
 import logging
 
 logging.basicConfig(
