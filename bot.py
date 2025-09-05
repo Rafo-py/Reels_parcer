@@ -1,8 +1,7 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from config import TOKEN, ADMIN_ID
+from config import TOKEN
 from database.db import async_main
 from handlers import start, admin_commands, sender, check_username, reels
 from Server import start_web_server
@@ -13,10 +12,11 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
+# Создание бота и диспетчера
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Подключаем роутеры
+# Подключение роутеров
 dp.include_routers(
     start.router,
     admin_commands.router,
@@ -27,13 +27,16 @@ dp.include_routers(
 
 async def main():
     try:
-        # БД
-        await async_main()
-        engine = create_async_engine(url='sqlite+aiosqlite:///db.sqlite3')
-        async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        # Запускаем web-сервер (он и поставит webhook)
+        server_task = asyncio.create_task(start_web_server())
 
-        # Запуск веб-сервера + webhook
-        await start_web_server()
+        # Инициализация базы данных
+        await async_main()
+
+        logging.info("Бот запущен в режиме Webhook ✅")
+
+        # держим сервер живым
+        await server_task
     except Exception as e:
         logging.error(f"Ошибка при запуске бота или сервера: {e}")
     finally:
