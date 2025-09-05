@@ -1,7 +1,6 @@
 services:
   - type: web
     name: insta-parser-bot
-    env: python
+    env: docker
     plan: free
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
-    startCommand: python bot.py
+    # Build и Start команды внутри Docker не нужны
