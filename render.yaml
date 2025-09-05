@@ -3,19 +3,5 @@ services:
     name: insta-parser-bot
     env: python
     plan: free
-    buildCommand: |
-      # Настраиваем Rust в домашней директории
-      export CARGO_HOME=$HOME/.cargo
-      export RUSTUP_HOME=$HOME/.rustup
-      export PATH=$CARGO_HOME/bin:$PATH
-
-      # Устанавливаем Rust через rustup
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      source $HOME/.cargo/env
-
-      # Обновляем pip и инструменты сборки
-      pip install --upgrade pip setuptools wheel
-
-      # Ставим зависимости Python
-      pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: python bot.py
