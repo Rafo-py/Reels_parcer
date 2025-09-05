@@ -2,12 +2,13 @@ from aiogram import Router, F, Bot
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.enums import ParseMode
+from typing import Optional
 import re
 import asyncio
 from functools import partial
 
 from config import TOKEN
-from parse_reels import fetch_top_reels_public  # новый парсер
+from parse_reels import fetch_top_reels_public
 
 router = Router()
 router.message.filter(F.chat.type == "private")
@@ -26,7 +27,10 @@ async def cmd_reels(message: Message):
     """
     parts = (message.text or "").split()
     if len(parts) < 2:
-        await message.answer("Укажи username: <code>/reels username [limit] [min_ratio]</code>", parse_mode=ParseMode.HTML)
+        await message.answer(
+            "Укажи username: <code>/reels username [limit] [min_ratio]</code>",
+            parse_mode=ParseMode.HTML
+        )
         return
 
     username = parts[1].strip().lstrip("@")
@@ -52,11 +56,11 @@ async def cmd_reels(message: Message):
     try:
         followers, reels, is_private = await _fetch_reels_async(username, limit, min_ratio)
     except Exception as e:
-        await waiting.edit_text("❌ Ошибка при получении Reels. Возможно, аккаунт не существует или закрыт.")
+        await waiting.edit_text(f"❌ Ошибка: {str(e)}")
         return
 
     if is_private:
-        await waiting.edit_text(f"⚠️ Аккаунт @{username} закрыт. Парсинг невозможен.")
+        await waiting.edit_text("🔒 Аккаунт закрыт. Нельзя просмотреть Reels без авторизации.")
         return
 
     if not reels:
@@ -68,11 +72,7 @@ async def cmd_reels(message: Message):
         lines.append(f"{i}. {url} — 👀 {views:,} • 🤩 вирусность {ratio:.2f}".replace(",", " "))
     await waiting.edit_text("\n".join(lines))
 
-
 async def _fetch_reels_async(username: str, limit: int, min_ratio: float):
-    """
-    Запуск блокирующего instaloader в отдельном потоке
-    """
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         None,
