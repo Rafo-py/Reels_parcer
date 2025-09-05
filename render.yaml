@@ -1,7 +1,7 @@
 services:
-  - type: worker
-    name: insta-reels-bot
+  - type: web
+    name: insta-parser-bot
     env: python
-    plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python -m insta_parser_bot.bot"
+    startCommand: "python bot.py"
+    plan: free
