@@ -1,13 +1,13 @@
-
 from aiogram import Router, F, Bot
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.enums import ParseMode
-from typing import Optional
 import re
+import asyncio
+from functools import partial
 
 from config import TOKEN
-from parse_reels import fetch_top_reels
+from parse_reels import fetch_top_reels_public  # новый парсер
 
 router = Router()
 router.message.filter(F.chat.type == "private")
@@ -50,9 +50,13 @@ async def cmd_reels(message: Message):
     waiting = await message.answer("🔎 Ищу вирусные Reels…")
 
     try:
-        followers, reels = await _fetch_reels_async(username, limit, min_ratio)
+        followers, reels, is_private = await _fetch_reels_async(username, limit, min_ratio)
     except Exception as e:
-        await waiting.edit_text("❌ Ошибка при получении Reels. Проверьте логин/пароль Instagram в config.py или повторите позже.")
+        await waiting.edit_text("❌ Ошибка при получении Reels. Возможно, аккаунт не существует или закрыт.")
+        return
+
+    if is_private:
+        await waiting.edit_text(f"⚠️ Аккаунт @{username} закрыт. Парсинг невозможен.")
         return
 
     if not reels:
@@ -64,10 +68,13 @@ async def cmd_reels(message: Message):
         lines.append(f"{i}. {url} — 👀 {views:,} • 🤩 вирусность {ratio:.2f}".replace(",", " "))
     await waiting.edit_text("\n".join(lines))
 
+
 async def _fetch_reels_async(username: str, limit: int, min_ratio: float):
-    # Run blocking instaloader in a thread to avoid blocking event loop
-    import asyncio
+    """
+    Запуск блокирующего instaloader в отдельном потоке
+    """
     loop = asyncio.get_running_loop()
-    from functools import partial
-    from parse_reels import fetch_top_reels
-    return await loop.run_in_executor(None, partial(fetch_top_reels, username, limit, min_ratio))
+    return await loop.run_in_executor(
+        None,
+        partial(fetch_top_reels_public, username, limit, min_ratio)
+    )
