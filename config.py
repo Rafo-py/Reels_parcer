@@ -1,5 +1,8 @@
-INST_LOGIN = ''
-INST_PASS = ''
-TOKEN = '8365308242:AAGMh96aikVH23Y9VzH_v0RP71Nukn4Ke5M'
+import os
+
+LOGIN = os.getenv("IG_LOGIN")
+PASSWORD = os.getenv("IG_PASSWORD")
+TOKEN = os.getenv("IG_TOKEN")
 
 ADMIN_ID = '139740084'
+
