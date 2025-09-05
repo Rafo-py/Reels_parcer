@@ -27,19 +27,21 @@ dp.include_routers(
 )
 
 async def main():
-    # Запускаем web-сервер для Render в фоне
-    asyncio.create_task(start_web_server())
+    try:
+        # Запускаем web-сервер для Render в фоне
+        server_task = asyncio.create_task(start_web_server())
 
-    # Инициализация базы данных
-    await async_main()
-    engine = create_async_engine(url='sqlite+aiosqlite:///db.sqlite3')
-    async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        # Инициализация базы данных
+        await async_main()
+        engine = create_async_engine(url='sqlite+aiosqlite:///db.sqlite3')
+        async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
-    # Запуск бота
-    await dp.start_polling(bot)
+        # Запуск бота
+        await dp.start_polling(bot)
+    except Exception as e:
+        logging.error(f"Ошибка при запуске бота или сервера: {e}")
+    finally:
+        await bot.session.close()  # корректное завершение сессии
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print('Exit')
+    asyncio.run(main())
