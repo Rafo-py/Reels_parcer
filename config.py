@@ -1,11 +1,12 @@
 import os
 
-LOGIN = os.getenv("IG_LOGIN")
-PASSWORD = os.getenv("IG_PASSWORD")
+INST_LOGIN = os.getenv("IG_LOGIN")       # логин для Instagram
+INST_PASSWORD = os.getenv("IG_PASSWORD")  # пароль для Instagram
 TOKEN = os.getenv("IG_TOKEN")
 
 WEBHOOK_URL = "https://reels-parcer.onrender.com/webhook"
 
 ADMIN_ID = '139740084'
+
 
 
