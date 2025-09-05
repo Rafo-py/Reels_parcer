@@ -1,29 +1,26 @@
 import instaloader
 from typing import List, Tuple
 
-def fetch_top_reels_public(
-    username: str,
-    limit: int = 5,
-    min_ratio: float = 0.0
-) -> Tuple[int, List[Tuple[str, int, float]], bool]:
+def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0) -> Tuple[int, List[Tuple[str, int, float]], bool]:
     """
-    Возвращает (followers, reels, is_private)
-    reels — список кортежей: (reel_url, views, virality_ratio)
-    is_private — True если аккаунт закрыт
+    Возвращает:
+      followers, reels (url, views, ratio), is_private
+    Работает только с публичными аккаунтами, без логина.
     """
     L = instaloader.Instaloader(
         download_pictures=False,
         download_videos=False,
         save_metadata=False,
-        download_comments=False
+        download_comments=False,
+        post_metadata_txt_pattern="",  # не сохраняем локально
     )
-
     try:
         profile = instaloader.Profile.from_username(L.context, username)
     except instaloader.exceptions.ProfileNotExistsException:
-        return 0, [], False  # аккаунт не найден
-    except instaloader.exceptions.PrivateProfileNotFollowedException:
-        return 0, [], True  # закрытый аккаунт
+        raise ValueError("Аккаунт не найден")
+    
+    if profile.is_private:
+        return 0, [], True  # аккаунт закрыт
 
     followers = profile.followers or 0
     results: List[Tuple[str, int, float]] = []
@@ -41,4 +38,4 @@ def fetch_top_reels_public(
             break
 
     results.sort(key=lambda x: x[2], reverse=True)
-    return followers, results[:limit], profile.is_private
+    return followers, results[:limit], False
