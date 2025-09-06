@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from config import TOKEN, ADMIN_ID
 from database.db import async_main
-from handlers import start, admin_commands, sender, check_username, reels
+from handlers import start, admin_commands, sender, reels
 from Server import start_web_server  # импортируем функцию из server.py
 
 # Логирование
