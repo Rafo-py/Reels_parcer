@@ -1,24 +1,43 @@
-import instaloader
+# handlers/reels.py
+import os
+import csv
+from aiogram import Router, types
+from aiogram.filters import Command
+from parse_reels import get_instagram_reels_count, parse_instagram_reels_to_csv
 
-async def get_instagram_reels_count(username: str) -> int:
+router = Router()
+
+
+@router.message(Command("reels"))
+async def get_reels(message: types.Message):
     """
-    Возвращает количество Reels (видео) у пользователя.
-    Работает без логина, только публичные аккаунты.
+    Обработчик команды /reels <username>
+    Парсит публичный Instagram аккаунт и отправляет Reels в CSV.
     """
-    L = instaloader.Instaloader(
-        download_pictures=False,
-        download_videos=False,
-        download_video_thumbnails=False,
-        save_metadata=False,
-        compress_json=False,
-    )
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Использование: /reels <username>")
+        return
+
+    username = args[1].strip().lstrip("@")
+    await message.answer(f"🔎 Ищу Reels у пользователя @{username}…")
 
     try:
-        profile = instaloader.Profile.from_username(L.context, username)
-        count = 0
-        for post in profile.get_posts():
-            if post.is_video:  # Только Reels
-                count += 1
-        return count
-    except Exception:
-        return 0
+        # Получаем количество Reels
+        total_reels = get_instagram_reels_count(username)
+        if total_reels == 0:
+            await message.answer("❌ Reels не найдены или аккаунт закрыт.")
+            return
+
+        # Парсим Reels в CSV (ограничим, например, 20 штук)
+        csv_filename = f"{username}_reels.csv"
+        parse_instagram_reels_to_csv(username, limit=20, output_file=csv_filename)
+
+        # Отправляем CSV пользователю
+        await message.answer_document(types.FSInputFile(csv_filename))
+
+        # Удаляем временный файл
+        os.remove(csv_filename)
+
+    except Exception as e:
+        await message.answer(f"⚠️ Ошибка при обработке: {e}")
