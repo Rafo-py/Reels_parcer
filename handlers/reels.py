@@ -3,8 +3,8 @@ import os
 import csv
 from aiogram import Router, types
 from aiogram.filters import Command
-from parse_reels import get_instagram_reels_count, parse_instagram_reels_to_csv
-
+from parse_reels import parse_instagram_reels_to_csv
+from get_reels_count import get_instagram_reels_count
 router = Router()
 
 
