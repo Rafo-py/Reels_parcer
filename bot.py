@@ -17,12 +17,11 @@ logging.basicConfig(
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Подключение роутеров
+# Подключение роутеров (без check_username)
 dp.include_routers(
     start.router,
     admin_commands.router,
     sender.router,
-    check_username.router,
     reels.router,
 )
 
