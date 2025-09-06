@@ -1,49 +1,57 @@
-import subprocess
-import json
-import os
+import requests
 from typing import List, Tuple
+import json
 
-def fetch_top_reels_public(username: str, limit: int = 5) -> Tuple[int, List[Tuple[str, int, float]], bool]:
+def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0) -> Tuple[int, List[Tuple[str, int, float]], bool]:
     """
-    Парсинг публичных Reels через instagram-scraper (без логина)
-    Возвращает followers, список топ Reels и приватность аккаунта
+    Парсит публичный Instagram аккаунт через JSON и возвращает топ Reels:
+        followers: int - количество подписчиков
+        reels: List[Tuple[reel_url:str, views:int, ratio:float]]
+        is_private: bool - True если аккаунт закрыт
+    Работает только с публичными аккаунтами.
     """
+    profile_url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/117.0.0.0 Safari/537.36"
+        )
+    }
+
     try:
-        # Создаём папку для временных данных
-        os.makedirs(f"./temp_data/{username}", exist_ok=True)
+        response = requests.get(profile_url, headers=headers, timeout=10)
+    except requests.RequestException:
+        raise ValueError("Ошибка подключения к Instagram")
 
-        # Запускаем instagram-scraper для видео
-        subprocess.run([
-            "instagram-scraper", username,
-            "--media-types", "video",
-            "--maximum", str(limit),
-            "--destination", f"./temp_data/{username}",
-            "--quiet"
-        ], check=True)
+    if response.status_code != 200:
+        raise ValueError("Аккаунт не найден или ошибка доступа")
 
-        # Читаем posts.json
-        reels_data = []
-        followers = 0
-        posts_file = f"./temp_data/{username}/{username}.json"
-
-        if not os.path.exists(posts_file):
-            return 0, [], False
-
-        with open(posts_file, "r", encoding="utf-8") as f:
-            for line in f:
-                post = json.loads(line)
-                if followers == 0:
-                    followers = post.get("owner", {}).get("edge_followed_by", 0)
-                if post.get("media_type") == "video":
-                    url = post.get("shortcode")
-                    views = post.get("video_view_count", 0)
-                    ratio = (views / followers) if followers else 0.0
-                    reels_data.append((f"https://www.instagram.com/reel/{url}/", views, ratio))
-
-        # Сортируем по популярности
-        reels_data.sort(key=lambda x: x[2], reverse=True)
-
-        return followers, reels_data[:limit], False
-
-    except Exception:
+    data = response.json()
+    user_data = data.get("graphql", {}).get("user")
+    if not user_data:
         return 0, [], False
+
+    if user_data.get("is_private"):
+        return 0, [], True
+
+    followers = user_data.get("edge_followed_by", {}).get("count", 0)
+    edges = user_data.get("edge_owner_to_timeline_media", {}).get("edges", [])
+    results: List[Tuple[str, int, float]] = []
+
+    for edge in edges:
+        node = edge.get("node", {})
+        if node.get("__typename") == "GraphVideo":
+            shortcode = node.get("shortcode")
+            views = node.get("video_view_count", 0)
+            ratio = (views / followers) if followers else 0.0
+            if ratio >= min_ratio:
+                reel_url = f"https://www.instagram.com/reel/{shortcode}/"
+                results.append((reel_url, views, ratio))
+
+        if len(results) >= limit:
+            break
+
+    results.sort(key=lambda x: x[2], reverse=True)
+    return followers, results[:limit], False
