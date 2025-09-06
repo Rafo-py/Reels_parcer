@@ -9,5 +9,4 @@ pytz==2024.1
 beautifulsoup4>=4.12.2
 requests>=2.31.0
 
-# Для скачивания Reels без логина
-instagram-scraper>=1.9.15
+
