@@ -1,8 +1,8 @@
 from aiogram import Router, types
 from aiogram.filters import Command
+from parse_reels import fetch_top_reels_public
 import csv
 import os
-from parse_reels import fetch_top_reels_public  # Новый рабочий метод с instagram-scraper
 
 router = Router()
 
@@ -18,23 +18,23 @@ async def get_reels(message: types.Message):
         return
 
     username = args[1]
-    search_msg = await message.answer(f"Ищу Reels у пользователя: {username}… ⏳")
+    await message.answer(f"Ищу Reels у пользователя: {username}… ⏳")
 
     try:
-        followers, reels, is_private = fetch_top_reels_public(username, limit=10)
+        followers, reels, is_private = fetch_top_reels_public(username, limit=10, min_ratio=0.01)
     except ValueError as e:
-        await search_msg.edit_text(f"Ошибка: {e}")
+        await message.answer(f"Ошибка: {e}")
         return
     except Exception as e:
-        await search_msg.edit_text(f"Произошла непредвиденная ошибка: {e}")
+        await message.answer(f"Произошла непредвиденная ошибка: {e}")
         return
 
     if is_private:
-        await search_msg.edit_text("Этот аккаунт закрыт. 🔒")
+        await message.answer("Этот аккаунт закрыт. 🔒")
         return
 
     if not reels:
-        await search_msg.edit_text("Не найдено Reels.")
+        await message.answer("Не найдено Reels, подходящих под условия.")
         return
 
     # Создаём CSV
@@ -45,8 +45,7 @@ async def get_reels(message: types.Message):
         for i, (url, views, ratio) in enumerate(reels, start=1):
             writer.writerow([i, url, views, followers, f"{ratio:.2f}"])
 
-    # Отправка CSV
-    await search_msg.edit_text(f"Готово! Отправляю CSV с топ {len(reels)} Reels.")
+    # Отправляем CSV пользователю
     await message.answer_document(types.FSInputFile(csv_filename))
 
     # Удаляем временный файл
