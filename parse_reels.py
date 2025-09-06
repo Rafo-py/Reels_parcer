@@ -1,8 +1,7 @@
 import requests
-from bs4 import BeautifulSoup
 from typing import List, Tuple
 import json
-import time
+import csv
 
 def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0) -> Tuple[int, List[Tuple[str, int, float]], bool]:
     """
@@ -30,19 +29,14 @@ def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0
     if response.status_code != 200:
         raise ValueError("Аккаунт не найден или ошибка доступа")
 
-    # Проверка закрытого аккаунта
     if "This Account is Private" in response.text:
         return 0, [], True
 
-    followers = 0
-    results: List[Tuple[str, int, float]] = []
-
-    # Парсим JSON из скрипта
-    soup = BeautifulSoup(response.text, "html.parser")
+    # Парсим JSON из window._sharedData
     script_tag = None
-    for script in soup.find_all("script", type="text/javascript"):
-        if script.string and "window._sharedData" in script.string:
-            script_tag = script.string
+    for line in response.text.splitlines():
+        if "window._sharedData" in line:
+            script_tag = line
             break
 
     if not script_tag:
@@ -56,30 +50,50 @@ def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0
         followers = user_data["edge_followed_by"]["count"]
 
         edges = user_data["edge_owner_to_timeline_media"]["edges"]
+        reels: List[Tuple[str, int, float]] = []
+
         for edge in edges:
-            if edge["node"]["__typename"] == "GraphVideo":
-                shortcode = edge["node"]["shortcode"]
-                views = edge["node"]["video_view_count"]
-                ratio = (views / followers) if followers else 0.0
+            node = edge["node"]
+            if node["__typename"] == "GraphVideo":
+                shortcode = node["shortcode"]
+                views = node.get("video_view_count", 0)
+                ratio = views / followers if followers else 0.0
 
                 if ratio >= min_ratio:
                     reel_url = f"https://www.instagram.com/reel/{shortcode}/"
-                    results.append((reel_url, views, ratio))
+                    reels.append((reel_url, views, ratio))
 
-            if len(results) >= limit:
-                break
+        # Сортируем по популярности
+        reels.sort(key=lambda x: x[2], reverse=True)
+
+        return followers, reels[:limit], False
 
     except Exception:
-        return followers, results[:limit], False
+        return 0, [], False
 
-    # Сортировка по популярности (ratio)
-    results.sort(key=lambda x: x[2], reverse=True)
-    return followers, results[:limit], False
+
+def export_reels_to_csv(username: str, reels: List[Tuple[str, int, float]]):
+    """Создаёт CSV с результатами"""
+    filename = f"{username}_reels.csv"
+    with open(filename, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["№", "URL", "Views", "Popularity Ratio"])
+        for i, (url, views, ratio) in enumerate(reels, start=1):
+            writer.writerow([i, url, views, f"{ratio:.4f}"])
+    return filename
+
 
 # --- Пример использования ---
 if __name__ == "__main__":
     username = "instagram"
-    followers, reels, is_private = fetch_top_reels_public(username, limit=5, min_ratio=0.01)
-    print(f"Followers: {followers}, Private: {is_private}")
-    for url, views, ratio in reels:
-        print(f"{url} | Views: {views} | Ratio: {ratio:.2f}")
+    followers, reels, is_private = fetch_top_reels_public(username, limit=10, min_ratio=0.0)
+
+    if is_private:
+        print(f"Аккаунт {username} закрыт.")
+    else:
+        print(f"Подписчиков: {followers}")
+        for i, (url, views, ratio) in enumerate(reels, start=1):
+            print(f"{i}. {url} | Views: {views} | Ratio: {ratio:.4f}")
+
+        csv_file = export_reels_to_csv(username, reels)
+        print(f"CSV сохранён: {csv_file}")
