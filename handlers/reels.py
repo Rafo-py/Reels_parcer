@@ -8,10 +8,6 @@ router = Router()
 
 @router.message(Command("reels"))
 async def get_reels(message: types.Message):
-    """
-    Обработчик команды /reels <username>
-    Парсит публичный Instagram аккаунт и возвращает топ Reels в CSV.
-    """
     args = message.text.split()
     if len(args) < 2:
         await message.answer("Использование: /reels <username>")
@@ -37,7 +33,7 @@ async def get_reels(message: types.Message):
         await message.answer("Не найдено Reels, подходящих под условия.")
         return
 
-    # Создаём CSV
+    # --- Создаём CSV ---
     csv_filename = f"{username}_reels.csv"
     with open(csv_filename, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
@@ -47,6 +43,4 @@ async def get_reels(message: types.Message):
 
     # Отправляем CSV пользователю
     await message.answer_document(types.FSInputFile(csv_filename))
-
-    # Удаляем временный файл
     os.remove(csv_filename)
