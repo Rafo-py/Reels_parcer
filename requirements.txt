@@ -1,9 +1,13 @@
-instaloader==4.12
+# Telegram и базы
 aiogram==3.4.1
 sqlalchemy==2.0.25
 aiosqlite==0.19.0
-pytz==2024.1
 pydantic>=2.4.1,<2.6
+pytz==2024.1
+
+# Парсинг веба
 beautifulsoup4>=4.12.2
 requests>=2.31.0
 
+# Для скачивания Reels без логина
+instagram-scraper>=1.9.15
