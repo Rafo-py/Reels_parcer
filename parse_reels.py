@@ -1,17 +1,17 @@
 import requests
+from bs4 import BeautifulSoup
 from typing import List, Tuple
 import json
 
-def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0) -> Tuple[int, List[Tuple[str, int, float]], bool]:
+def fetch_top_reels_public(username: str, limit: int = 10, min_ratio: float = 0.01) -> Tuple[int, List[Tuple[str, int, float]], bool]:
     """
-    Парсит публичный Instagram аккаунт через JSON и возвращает топ Reels:
-        followers: int - количество подписчиков
-        reels: List[Tuple[reel_url:str, views:int, ratio:float]]
-        is_private: bool - True если аккаунт закрыт
-    Работает только с публичными аккаунтами.
+    Получает топ Reels публичного аккаунта.
+    Возвращает:
+        followers: int
+        reels: List[Tuple[url:str, views:int, ratio:float]]
+        is_private: bool
     """
-    profile_url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
-
+    profile_url = f"https://www.instagram.com/{username}/"
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -22,36 +22,45 @@ def fetch_top_reels_public(username: str, limit: int = 5, min_ratio: float = 0.0
 
     try:
         response = requests.get(profile_url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            raise ValueError("Аккаунт не найден или ошибка доступа")
     except requests.RequestException:
         raise ValueError("Ошибка подключения к Instagram")
 
-    if response.status_code != 200:
-        raise ValueError("Аккаунт не найден или ошибка доступа")
-
-    data = response.json()
-    user_data = data.get("graphql", {}).get("user")
-    if not user_data:
-        return 0, [], False
-
-    if user_data.get("is_private"):
+    if "This Account is Private" in response.text:
         return 0, [], True
 
-    followers = user_data.get("edge_followed_by", {}).get("count", 0)
-    edges = user_data.get("edge_owner_to_timeline_media", {}).get("edges", [])
-    results: List[Tuple[str, int, float]] = []
-
-    for edge in edges:
-        node = edge.get("node", {})
-        if node.get("__typename") == "GraphVideo":
-            shortcode = node.get("shortcode")
-            views = node.get("video_view_count", 0)
-            ratio = (views / followers) if followers else 0.0
-            if ratio >= min_ratio:
-                reel_url = f"https://www.instagram.com/reel/{shortcode}/"
-                results.append((reel_url, views, ratio))
-
-        if len(results) >= limit:
+    # Получаем JSON из скрипта window._sharedData
+    soup = BeautifulSoup(response.text, "html.parser")
+    script_tag = None
+    for script in soup.find_all("script"):
+        if script.string and "window._sharedData" in script.string:
+            script_tag = script.string
             break
 
-    results.sort(key=lambda x: x[2], reverse=True)
-    return followers, results[:limit], False
+    if not script_tag:
+        return 0, [], False
+
+    try:
+        json_str = script_tag.strip().replace("window._sharedData = ", "")[:-1]
+        data = json.loads(json_str)
+        user_data = data["entry_data"]["ProfilePage"][0]["graphql"]["user"]
+
+        followers = user_data["edge_followed_by"]["count"]
+        edges = user_data["edge_owner_to_timeline_media"]["edges"]
+
+        reels = []
+        for edge in edges:
+            node = edge["node"]
+            if node["__typename"] == "GraphVideo":
+                shortcode = node["shortcode"]
+                views = node.get("video_view_count", 0)
+                ratio = (views / followers) if followers else 0
+                if ratio >= min_ratio:
+                    reels.append((f"https://www.instagram.com/reel/{shortcode}/", views, ratio))
+        # сортировка по популярности
+        reels.sort(key=lambda x: x[2], reverse=True)
+        return followers, reels[:limit], False
+
+    except Exception:
+        return 0, [], False
