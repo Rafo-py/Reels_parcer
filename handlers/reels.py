@@ -31,7 +31,7 @@ async def get_reels(message: types.Message):
 
         # Парсим Reels в CSV (ограничим, например, 20 штук)
         csv_filename = f"{username}_reels.csv"
-        parse_instagram_reels_to_csv(username, limit=20, output_file=csv_filename)
+        parse_instagram_reels_to_csv(username, limit=30, output_file=csv_filename)
 
         # Отправляем CSV пользователю
         await message.answer_document(types.FSInputFile(csv_filename))
